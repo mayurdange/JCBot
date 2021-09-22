@@ -28,13 +28,6 @@ public class MessageListener extends ListenerAdapter {
     private Map<Pair<Integer, Integer>, Integer> weightRange = new HashMap<>();
 
     public MessageListener() {
-//        Th8 42k - 55k
-//        Th9 56k- 70k
-//        Th10 71 - 90k
-//        Th11 91k - 110k
-//        Th12 111k - 120k
-//        Th13 121k - 130k
-//        Th14 131k - 140k
         weightRange.put(Pair.of(Integer.MAX_VALUE/1000, 131), 14);
         weightRange.put(Pair.of(131, 121), 13);
         weightRange.put(Pair.of(121, 111), 12);
@@ -55,6 +48,10 @@ public class MessageListener extends ListenerAdapter {
                 new CommandData("comp", "gets the TH composition of the clan")
                         .addOptions(new OptionData(STRING, "tag", "Clan tag. if blank, use default clans")
                                 .setRequired(true))
+        );
+
+        commands.addCommands(
+                new CommandData("abc", "description")
         );
         // Send the new set of commands to discord, this will override any existing global commands with the new set provided here
         commands.queue();
