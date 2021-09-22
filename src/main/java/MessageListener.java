@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
 import net.dv8tion.jda.internal.utils.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +28,20 @@ public class MessageListener extends ListenerAdapter {
     private Map<Pair<Integer, Integer>, Integer> weightRange = new HashMap<>();
 
     public MessageListener() {
-        weightRange.put(Pair.of(139000, 116000), 14);
-        weightRange.put(Pair.of(116000, 119000), 13);
-        weightRange.put(Pair.of(119000, 109000), 12);
-        weightRange.put(Pair.of(109000, 86000), 11);
-        weightRange.put(Pair.of(86000, 69000), 10);
-        weightRange.put(Pair.of(69000, 0), 9);
+//        Th8 42k - 55k
+//        Th9 56k- 70k
+//        Th10 71 - 90k
+//        Th11 91k - 110k
+//        Th12 111k - 120k
+//        Th13 121k - 130k
+//        Th14 131k - 140k
+        weightRange.put(Pair.of(Integer.MAX_VALUE/1000, 131), 14);
+        weightRange.put(Pair.of(131, 121), 13);
+        weightRange.put(Pair.of(121, 111), 12);
+        weightRange.put(Pair.of(111, 91), 11);
+        weightRange.put(Pair.of(91, 71), 10);
+        weightRange.put(Pair.of(71, 56), 9);
+        weightRange.put(Pair.of(56, 42), 8);
     }
 
     public static void main(String[] args)
@@ -44,8 +53,8 @@ public class MessageListener extends ListenerAdapter {
         CommandListUpdateAction commands = jda.updateCommands();
         commands.addCommands(
                 new CommandData("comp", "gets the TH composition of the clan")
-                        .addOptions(new OptionData(STRING, "content", "Clan tag. if blank, use default clans")
-                                .setRequired(false))
+                        .addOptions(new OptionData(STRING, "tag", "Clan tag. if blank, use default clans")
+                                .setRequired(true))
         );
         // Send the new set of commands to discord, this will override any existing global commands with the new set provided here
         commands.queue();
@@ -65,38 +74,42 @@ public class MessageListener extends ListenerAdapter {
         }
     }
 
-    private void calcStats(SlashCommandEvent event) {
-        OptionMapping clanTag = event.getOption("content");
+    public void calcStats(SlashCommandEvent event) {
+        OptionMapping clanTag = event.getOption("tag");
         event.reply("calculating..").queue();
-        if (allClans.isEmpty()) {
-            ResponseEntity<List<Clans>> responseClans =
-                    restTemplate.exchange("https://fwastats.com/Clans.json",
-                            HttpMethod.GET, null, new ParameterizedTypeReference<List<Clans>>() {
-                            });
-            responseClans.getBody().forEach(c -> {
-                allClans.put(c.getTag(), c);
-            });
-        }
-        Clans clan = allClans.get(clanTag == null ? "#9JUVCV0L" : clanTag);
+        String responseMessage = calculateThComp(clanTag);
+        event.getMessageChannel().sendMessage(responseMessage).queue(); // This requires no permissions!
+    }
 
-        ResponseEntity<List<Members>> responseMembers =
-                restTemplate.exchange("https://fwastats.com/Clan/" + clan.getTag().substring(1) + "/Members.json",
-                        HttpMethod.GET, null, new ParameterizedTypeReference<List<Members>>() {
-                        });
+    @NotNull
+    private String calculateThComp(OptionMapping clanTag) {
+        String clanTagstr =  clanTag== null ? "#9JUVCV0L" : clanTag.getAsString();
+        System.out.println(clanTagstr);
+        ResponseEntity<List<Members>> responseMembers = getMemberInfo(clanTagstr);
+        String responseMessage = getResponseString(responseMembers.getBody());
+        return responseMessage;
+    }
 
+    @NotNull String getResponseString(List<Members> members) {
         Map<Integer, Integer> actual = new HashMap<>();
         Map<Integer, Integer> weight = new HashMap<>();
-        responseMembers.getBody().forEach(m -> {
+        for (Members m : members) {
             Integer thLvl = actual.getOrDefault(m.getTownHall(), 0);
             actual.put(m.getTownHall(), ++thLvl);
 
-            weightRange.forEach((p, t) -> {
-                if (m.getWeight() > p.getLeft() && m.getWeight() < p.getRight()) {
+            for (Map.Entry<Pair<Integer, Integer>, Integer> entry : weightRange.entrySet()) {
+                Pair<Integer, Integer> p = entry.getKey();
+                Integer t = entry.getValue();
+                Integer memberWeight = m.getWeight()/1000;
+                if (memberWeight < p.getLeft() && memberWeight > p.getRight()) {
                     Integer w = weight.getOrDefault(t, 0);
                     weight.put(t, ++w);
+                    break;
                 }
-            });
-        });
+            }
+        }
+
+        System.out.println("actual"+actual+"\nweight"+weight);
 
         String act = "Actual: ";
         String wt = "Weight: ";
@@ -108,6 +121,26 @@ public class MessageListener extends ListenerAdapter {
             wt = wt + "/" + wt1;
             th = th + "/" + i;
         }
-        event.getMessageChannel().sendMessage(th + "\n" + act + "\n" + wt).queue(); // This requires no permissions!
+        String responseMessage = th + "\n" + act + "\n" + wt;
+        return responseMessage;
+    }
+
+    @NotNull
+    private ResponseEntity<List<Members>> getMemberInfo(String clanTagstr) {
+        ResponseEntity<List<Members>> responseMembers =
+                restTemplate.exchange("https://fwastats.com/Clan/" + clanTagstr.substring(1) + "/Members.json",
+                        HttpMethod.GET, null, new ParameterizedTypeReference<List<Members>>() {
+                        });
+        return responseMembers;
+    }
+
+    private void populateClanInfo() {
+        ResponseEntity<List<Clans>> responseClans =
+                restTemplate.exchange("https://fwastats.com/Clans.json",
+                        HttpMethod.GET, null, new ParameterizedTypeReference<List<Clans>>() {
+                        });
+        responseClans.getBody().forEach(c -> {
+            allClans.put(c.getTag(), c);
+        });
     }
 }
