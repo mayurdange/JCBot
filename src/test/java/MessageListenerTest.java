@@ -15,7 +15,7 @@ class MessageListenerTest {
         members.add(getMembers(68000, 9));
         members.add(getMembers(100, 12));
         members.add(getMembers(800, 14));
-        String responseString = new MessageListener().getResponseString(members,"");
+        String responseString = new CompCommandProcessor().getResponseString(members,"");
         System.out.println(responseString);
     }
 
