@@ -17,6 +17,7 @@ import java.util.Map;
 
 public class ConfigDao {
     public static final String ALIAS = "ALIAS";
+    public static final String USER_ALIAS = "USER_ALIAS";
     public static final String PREFIX = "PREFIX";
     private DataSource dataSource;
     private JdbcTemplate jdbcTemplateObject;
@@ -40,6 +41,9 @@ public class ConfigDao {
                 case ALIAS:
                     allAlias.put(rs.getString("key"), rs.getString("val"));
                     break;
+                case USER_ALIAS:
+                    userAlias.put(rs.getString("key"), rs.getString("val"));
+                    break;
                 case PREFIX:
                     prefix.put(rs.getString("key"), rs.getString("val").charAt(0));
                     break;
@@ -54,15 +58,21 @@ public class ConfigDao {
         List<String[]> toWrite = new ArrayList<>();
         toWrite.add(new String[]{"type","key","val"});
         allAlias.forEach((k,v)-> toWrite.add(new String[]{ALIAS,k,v}));
-        toWrite.add(new String[]{PREFIX,PREFIX, String.valueOf(prefix)});
+        userAlias.forEach((k,v)-> toWrite.add(new String[]{USER_ALIAS,k,v}));
+        prefix.forEach((k,v)-> toWrite.add(new String[]{PREFIX,k, String.valueOf(v)}));
+        //toWrite.add(new String[]{PREFIX,PREFIX, String.valueOf(prefix)});
         csvWriter.writeAll(toWrite);
         csvWriter.close();
         writer.close();
     }
 
     public void addAlias(String alias, String clanTag) throws IOException {
-        allAlias.put(alias.toLowerCase(),clanTag);
-        writeAllConfig();
+        if(alias.length()>1) {
+            allAlias.put(alias.toLowerCase(), clanTag);
+            writeAllConfig();
+        }else{
+            throw new RuntimeException("Alias name must be >2 chars");
+        }
     }
 
     public Map<String,String> getAllAlias(){
@@ -89,6 +99,6 @@ public class ConfigDao {
     }
 
     public char getPrefix(Guild guild) {
-        return prefix.getOrDefault(guild.getName(),'*');
+        return prefix.getOrDefault(guild.getName(),'\'');
     }
 }

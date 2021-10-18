@@ -142,9 +142,20 @@ public class MessageListener extends ListenerAdapter {
                     EmbedBuilder eb = new EmbedBuilder();
                     char prefix = configDao.getPrefix(event.getGuild());
                     eb.setDescription("** "+prefix+"th #clanTag ** : to get the town hall composition of the clan\n" +
-                            "** "+prefix+"ln alias #clanTag ** : [WIP] link alias to clan tag\n"+
+                            "** "+prefix+"ln alias #clanTag ** : link alias to clan tag\n"+
+                            "** "+prefix+"ln #clanTag ** : link user to clan tag\n"+
+                            "** "+prefix+"list-aliases ** list all aliases\n"+
                             "** "+prefix+"help ** : this help page");
                     event.getChannel().sendMessage(eb.build()).queue();
+                    break;
+                case "list-aliases":
+                    EmbedBuilder eb1 = new EmbedBuilder();
+                    StringBuilder ls = new StringBuilder("Listing all Aliases\n");
+                    configDao.getAllAlias().forEach((a,t) -> ls.append(a).append("\t->\t").append(t).append("\n"));
+                    ls.append("\nUser aliases:\n");
+                    configDao.getUserAlias().forEach((a,t) -> ls.append(a).append("\t->\t").append(t).append("\n"));
+                    eb1.setDescription(ls.toString());
+                    event.getChannel().sendMessage(eb1.build()).queue();
                     break;
                 default:
             }
@@ -153,7 +164,11 @@ public class MessageListener extends ListenerAdapter {
             e.printStackTrace();
             event.getMessage().addReaction("pepe_cry:883680509916508200").queue();
             char prefix = configDao.getPrefix(event.getGuild());
-            event.getMessage().reply("something went wrong. Try ** "+prefix+"help ** for command info").queue();
+            String content = "something went wrong.\nTry ** " + prefix + "help ** for command info\n";
+            if(e instanceof  RuntimeException){
+                content=content+e.getMessage();
+            }
+            event.getMessage().reply(content).queue();
         }
     }
 
@@ -167,7 +182,7 @@ public class MessageListener extends ListenerAdapter {
             String param = readMessageLowercase.substring(4);
             Map<String, String> allAlias = configDao.getAllAlias();
             System.out.println(param.toLowerCase());
-            return allAlias.get(param.toLowerCase());
+            return allAlias.getOrDefault(param.toLowerCase(),param);
         }else{
             return readMessage.substring(hashIndex).toUpperCase();
         }

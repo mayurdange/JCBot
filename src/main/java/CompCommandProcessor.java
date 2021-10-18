@@ -66,17 +66,20 @@ public class CompCommandProcessor {
 
 
     public MessageEmbed calcStats(String clanTagstr) throws IOException {
+        if(!clanTagstr.startsWith("#")){
+            clanTagstr="#"+clanTagstr;
+        }
         Clans clan = allClans.get(clanTagstr);
         if(clan==null){
             System.out.println("cannot find clan info from the tag provided.., updating clans list");
-            if(StringUtils.isEmpty(clanTagstr) || clanTagstr.length() != 9 || !clanTagstr.startsWith("#")){
+            if(StringUtils.isEmpty(clanTagstr) || clanTagstr.length() != 10){
                 EmbedBuilder eb = new EmbedBuilder();
                 eb.setDescription("cannot find the clan info :sob: for tag:**"+clanTagstr+"**.Is this a valid tag for a FWA clan?");
                 throw new RuntimeException("clan tag "+clanTagstr+" looks invalid!");
             }
             //fetch and update the Clans.json
             updateClansList();
-            clan = allClans.get(clanTagstr);
+            clan = allClans.get(clanTagstr.toUpperCase());
             if(clan==null){
                 EmbedBuilder eb = new EmbedBuilder();
                 eb.setDescription("cannot find the clan info :sob: for tag:**"+clanTagstr+"**.Is this a valid tag for a FWA clan?");
